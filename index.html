@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>레오의 딸들을 위한 테트리스 - 프로</title>
+    <title>레오의 딸들을 위한 테트리스 - NEXT 완벽 정렬</title>
     <style>
         :root {
             --bg-color: #2c3e50;
@@ -31,24 +31,30 @@
             grid-template-columns: 1fr 1fr 1fr;
             width: 95%;
             max-width: 340px;
-            padding: 10px 0;
+            padding: 8px 0;
             z-index: 10;
-            gap: 5px;
+            gap: 4px;
         }
 
         .info-box {
             background: var(--panel-color);
             padding: 5px;
             border-radius: 12px;
-            font-size: 13px;
+            font-size: 12px;
             text-align: center;
         }
 
         .info-label {
-            font-size: 10px;
+            font-size: 9px;
             color: #bdc3c7;
             display: block;
             margin-bottom: 2px;
+        }
+
+        .info-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
         }
 
         /* 미리보기 박스 스타일 */
@@ -59,10 +65,10 @@
             justify-content: center;
         }
 
-        /* [핵심 수정] 미리보기 캔버스 크기 최적화 (짤림 방지) */
+        /* [미세 조정] 미리보기 캔버스 내부 여백을 위해 스타일 크기 살짝 축소 */
         canvas#next {
-            width: 50px;
-            height: 50px;
+            width: 32px;
+            height: 32px;
         }
 
         /* 게임 메인 컨테이너 */
@@ -73,11 +79,12 @@
             align-items: center;
         }
 
+        /* 게임화면 세로 확대 (68vh) */
         canvas#tetris {
             border: 4px solid #fff;
             border-radius: 10px;
             background: rgba(0, 0, 0, 0.5);
-            height: 60vh;
+            height: 68vh;
             aspect-ratio: 1 / 2;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
@@ -99,13 +106,13 @@
         }
 
         .btn-start {
-            padding: 12px 30px;
-            font-size: 20px;
+            padding: 10px 25px;
+            font-size: 18px;
             font-weight: bold;
             background: #ff7675;
             color: #fff;
             border: none;
-            border-radius: 25px;
+            border-radius: 20px;
             cursor: pointer;
             box-shadow: 0 4px #d63031;
         }
@@ -115,22 +122,22 @@
             box-shadow: 0 1px #d63031;
         }
 
-        /* 조작 버튼 */
+        /* 아래 조작바 슬림화 */
         .controls {
             display: flex;
-            gap: 10px;
-            padding: 15px 0;
+            gap: 8px;
+            padding: 10px 0;
         }
 
         .btn {
-            width: 55px;
-            height: 55px;
+            width: 48px;
+            height: 48px;
             background: #fab1a0;
             border-radius: 50%;
             border: none;
-            font-size: 22px;
+            font-size: 20px;
             color: #fff;
-            box-shadow: 0 4px #e17055;
+            box-shadow: 0 3px #e17055;
         }
 
         .btn:active {
@@ -139,11 +146,12 @@
         }
 
         .btn-hard {
-            width: 85px;
-            border-radius: 18px;
+            width: 75px;
+            border-radius: 16px;
             background: #74b9ff;
-            box-shadow: 0 4px #0984e3;
-            font-size: 12px;
+            box-shadow: 0 3px #0984e3;
+            font-size: 11px;
+            padding: 0 5px;
         }
     </style>
 </head>
@@ -151,20 +159,20 @@
 <body>
 
     <div class="header">
-        <div class="info-box"><span class="info-label">SCORE</span><span id="score">0</span></div>
+        <div class="info-box"><span class="info-label">SCORE</span><span id="score" class="info-value">0</span></div>
         <div class="info-box next-box">
             <span class="info-label">NEXT</span>
             <canvas id="next" width="80" height="80"></canvas>
         </div>
-        <div class="info-box"><span class="info-label">LEVEL</span><span id="level">1</span></div>
+        <div class="info-box"><span class="info-label">LEVEL</span><span id="level" class="info-value">1</span></div>
     </div>
 
     <div class="game-wrapper">
         <canvas id="tetris" width="200" height="400"></canvas>
 
         <div id="overlay">
-            <h1 id="msg" style="margin-bottom: 5px; font-size: 28px;">READY?</h1>
-            <p id="final-score-txt" style="display:none; margin-bottom: 15px; font-size: 16px;">Score: <span
+            <h1 id="msg" style="margin-bottom: 5px; font-size: 24px;">READY?</h1>
+            <p id="final-score-txt" style="display:none; margin-bottom: 15px; font-size: 14px;">Score: <span
                     id="final-score">0</span></p>
             <button class="btn-start" onclick="startGame()">START!</button>
         </div>
@@ -179,17 +187,30 @@
     </div>
 
     <script>
+        // 폭발 소리 생성기
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playExplosionSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+        }
+
         const canvas = document.getElementById('tetris');
         const context = canvas.getContext('2d');
         const nextCanvas = document.getElementById('next');
         const nextContext = nextCanvas.getContext('2d');
 
         context.scale(20, 20);
-        // [핵심 수정] 미리보기 스케일 최적화 (짤림 방지)
-        nextContext.scale(20, 20);
+        nextContext.scale(20, 20); // 1칸 = 20px
 
         // 귀여운 파스텔 컬러 (8번은 폭탄)
-        const colors = [null, '#ff7675', '#74b9ff', '#55efc4', '#ffe138', '#fab1a0', '#a29bfe', '#fd79a8', '#2d3436'];
+        const colors = [null, '#ff7675', '#74b9ff', '#55efc4', '#ffe138', '#fab1a0', '#a29bfe', '#fd79a8', '#ff3333'];
 
         function createPiece(type) {
             if (type === 'I') return [[0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0]];
@@ -199,7 +220,8 @@
             if (type === 'Z') return [[5, 5, 0], [0, 5, 5], [0, 0, 0]];
             if (type === 'S') return [[0, 6, 6], [6, 6, 0], [0, 0, 0]];
             if (type === 'T') return [[0, 7, 0], [7, 7, 7], [0, 0, 0]];
-            if (type === 'B') return [[0, 8, 0], [8, 8, 8], [0, 8, 0]]; // 십자형 폭탄
+            // 진짜 폭탄 모양 (3x3 십자형)
+            if (type === 'B') return [[0, 8, 0], [8, 8, 8], [0, 8, 0]];
         }
 
         function createMatrix(w, h) {
@@ -208,9 +230,33 @@
             return matrix;
         }
 
-        // [핵심 추가] 줄 제거 시 반짝임 효과를 위한 변수
-        let linesToClear = [];
-        let clearAnimCounter = 0;
+        // [핵심 수정] 미리보기 완벽 중앙 정렬 로직
+        function drawNextPiece() {
+            nextContext.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+            if (!nextPiece) return;
+
+            // 1. 블록의 실제 가로/세로 칸 수 계산
+            let maxW = 0, maxH = 0;
+            nextPiece.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value !== 0) {
+                        maxW = Math.max(maxW, x + 1);
+                        maxH = Math.max(maxH, y + 1);
+                    }
+                });
+            });
+
+            // 2. 캔버스 논리 크기 (칸 수) 계산 (80px / 20px = 4칸)
+            const canvasW = nextCanvas.width / 20;
+            const canvasH = nextCanvas.height / 20;
+
+            // 3. 완벽한 중앙 좌표 계산 (블록 크기의 절반을 캔버스 중앙에서 뺌)
+            const offsetX = (canvasW - maxW) / 2;
+            const offsetY = (canvasH - maxH) / 2;
+
+            // 4. 그리기
+            drawMatrix(nextPiece, { x: offsetX, y: offsetY }, nextContext);
+        }
 
         function draw() {
             // 배경 그리기
@@ -218,33 +264,11 @@
             context.fillRect(0, 0, canvas.width, canvas.height);
 
             drawMatrix(arena, { x: 0, y: 0 }, context);
+            drawGhost();
+            if (player.matrix) drawMatrix(player.matrix, player.pos, context);
 
-            // [핵심 추가] 줄 제거 반짝임 효과 그리기
-            if (linesToClear.length > 0) {
-                context.fillStyle = 'white'; // 하얗게 반짝임
-                linesToClear.forEach(y => {
-                    context.fillRect(0, y, arena[0].length, 1);
-                });
-                clearAnimCounter++;
-                if (clearAnimCounter > 10) { // 약 0.2초간 반짝임
-                    clearAnim(); // 애니메이션 종료 후 실제 줄 제거
-                }
-            } else {
-                drawGhost();
-                if (player.matrix) drawMatrix(player.matrix, player.pos, context);
-            }
-
-            // [핵심 수정] 미리보기 그리기 (가운데 정렬 최적화)
-            nextContext.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
-            if (nextPiece) {
-                // 도형 크기에 따라 가운데 정렬 오프셋 조정
-                const offset = { x: 0, y: 0 };
-                if (nextPiece.length === 4) offset.x = 0, offset.y = 0; // I자
-                else if (nextPiece.length === 3) offset.x = 0.5, offset.y = 0.5; // T, L, J, S, Z, B자
-                else offset.x = 1, offset.y = 1; // O자
-
-                drawMatrix(nextPiece, offset, nextContext);
-            }
+            // 미리보기 그리기
+            drawNextPiece();
         }
 
         function drawMatrix(matrix, offset, ctx) {
@@ -254,7 +278,17 @@
                         ctx.fillStyle = colors[value];
                         // 젤리 느낌의 둥근 사각형
                         ctx.fillRect(x + offset.x + 0.05, y + offset.y + 0.05, 0.9, 0.9);
-                        if (value === 8) { // 폭탄 눈 그리기 👀
+
+                        // 폭탄 비주얼 강화
+                        if (value === 8) {
+                            // 심지 그리기
+                            ctx.fillStyle = "#8e44ad";
+                            ctx.fillRect(x + offset.x + 0.45, y + offset.y - 0.2, 0.1, 0.2);
+                            // 불꽃
+                            ctx.fillStyle = Math.random() > 0.5 ? "#ff9f43" : "#ee5253";
+                            ctx.fillRect(x + offset.x + 0.4, y + offset.y - 0.3, 0.2, 0.2);
+
+                            // 폭탄 눈 그리기
                             ctx.fillStyle = "white";
                             ctx.fillRect(x + offset.x + 0.2, y + offset.y + 0.3, 0.2, 0.2);
                             ctx.fillRect(x + offset.x + 0.6, y + offset.y + 0.3, 0.2, 0.2);
@@ -290,15 +324,15 @@
 
         // 세로 3줄 폭발 로직 💣
         function explode(player) {
-            const x = player.pos.x + 1; // 폭탄 중심
-            for (let i = x - 1; i <= x + 1; i++) { // 좌우 한 줄씩
+            const x = player.pos.x + 1;
+            for (let i = x - 1; i <= x + 1; i++) {
                 if (i >= 0 && i < arena[0].length) {
-                    for (let j = 0; j < arena.length; j++) { // 바닥까지
+                    for (let j = 0; j < arena.length; j++) {
                         arena[j][i] = 0;
                     }
                 }
             }
-            // 폭발 이펙트 (간단하게 흰색 반짝임)
+            playExplosionSound();
             context.fillStyle = "white";
             context.fillRect(x - 1, 0, 3, arena.length);
         }
@@ -324,39 +358,34 @@
         }
 
         function playerDrop() {
-            if (!gameRunning || linesToClear.length > 0) return; // 줄 제거 애니메이션 중엔 드롭 중지
+            if (!gameRunning) return;
             player.pos.y++;
             if (collide(arena, player)) {
                 player.pos.y--;
                 merge(arena, player);
-                arenaSweep(); // 줄 체크 및 애니메이션 시작
-                if (linesToClear.length === 0) {
-                    playerReset();
-                }
+                playerReset();
+                arenaSweep();
             }
             dropCounter = 0;
         }
 
         function playerHardDrop() {
-            if (!gameRunning || linesToClear.length > 0) return;
+            if (!gameRunning) return;
             while (!collide(arena, player)) { player.pos.y++; }
             player.pos.y--;
             merge(arena, player);
+            playerReset();
             arenaSweep();
-            if (linesToClear.length === 0) {
-                playerReset();
-            }
         }
 
         function playerMove(dir) {
-            if (!gameRunning || linesToClear.length > 0) return;
+            if (!gameRunning) return;
             player.pos.x += dir;
             if (collide(arena, player)) player.pos.x -= dir;
         }
 
         function playerRotate(dir) {
-            if (!gameRunning || linesToClear.length > 0) return;
-            // 폭탄은 회전 안 함
+            if (!gameRunning) return;
             if (player.matrix.length === 3 && player.matrix[1][1] === 8) return;
 
             const pos = player.pos.x;
@@ -373,43 +402,25 @@
             }
         }
 
-        // [핵심 수정] 줄 제거 체크 및 애니메이션 시작
         function arenaSweep() {
             let rowCount = 0;
-            for (let y = arena.length - 1; y > 0; --y) {
-                let isFull = true;
-                for (let x = 0; x < arena[y].length; ++x) {
-                    if (arena[y][x] === 0) {
-                        isFull = false;
-                        break;
-                    }
-                }
-                if (isFull) {
-                    linesToClear.push(y);
-                    rowCount++;
-                }
+            outer: for (let y = arena.length - 1; y > 0; --y) {
+                for (let x = 0; x < arena[y].length; ++x) { if (arena[y][x] === 0) continue outer; }
+                const row = arena.splice(y, 1)[0].fill(0);
+                arena.unshift(row);
+                ++y;
+                rowCount++;
             }
             if (rowCount > 0) {
-                clearAnimCounter = 0; // 애니메이션 카운터 초기화
                 player.score += rowCount * 10 * player.level;
                 player.lines += rowCount;
-                if (player.lines >= 5) { // 5줄마다 레벨업
+                if (player.lines >= 5) {
                     player.level++;
                     player.lines = 0;
                     dropInterval *= 0.9;
                 }
                 updateScore();
             }
-        }
-
-        // [핵심 추가] 줄 제거 애니메이션 종료 후 실제 제거 로직
-        function clearAnim() {
-            linesToClear.forEach(y => {
-                const row = arena.splice(y, 1)[0].fill(0);
-                arena.unshift(row);
-            });
-            linesToClear = []; // 애니메이션 종료
-            playerReset(); // 새 블록 소환
         }
 
         let nextPiece = null;
@@ -422,7 +433,6 @@
             }
 
             player.matrix = nextPiece;
-            // 다음 블록 미리 생성
             if (Math.random() < bombChance) {
                 nextPiece = createPiece('B');
             } else {
@@ -451,7 +461,6 @@
             arena.forEach(row => row.fill(0));
             player.score = 0; player.level = 1; player.lines = 0; dropInterval = 1000;
             nextPiece = null;
-            linesToClear = []; // 애니메이션 초기화
             updateScore();
             playerReset();
             gameRunning = true;
