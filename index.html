@@ -4,16 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>레오의 사운드 테트리스</title>
-    <link rel="manifest" href="manifest.json">
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
-        }
-    </script>
+    <title>레오의 테트리스 - 프로 버전</title>
     <style>
         body {
-            background: #1a1a1a;
+            background: #121212;
             color: #fff;
             display: flex;
             flex-direction: column;
@@ -30,7 +24,7 @@
             width: 100%;
             text-align: center;
             padding: 10px 0;
-            font-size: 18px;
+            font-size: 16px;
             color: #00ffcc;
             background: rgba(0, 0, 0, 0.8);
             position: fixed;
@@ -39,45 +33,67 @@
         }
 
         .game-container {
-            margin-top: 60px;
             position: relative;
+            margin-top: 50px;
+            margin-bottom: 90px;
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
+            height: calc(100vh - 150px);
         }
 
         canvas {
-            border: 2px solid #555;
+            border: 2px solid #444;
             background: #000;
-            max-width: 80vw;
-            height: 45vh;
+            height: 100%;
+            aspect-ratio: 1 / 2;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
         }
 
+        /* 시작 및 게임오버 화면 레이어 */
         #overlay {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.85);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             z-index: 30;
+            gap: 20px;
+        }
+
+        .status-text {
+            font-size: 32px;
+            font-weight: bold;
+            color: #00ffcc;
+            text-shadow: 0 0 10px #00ffcc;
+        }
+
+        .score-text {
+            font-size: 18px;
+            color: #fff;
         }
 
         .start-btn {
-            padding: 15px 30px;
+            padding: 12px 30px;
             font-size: 20px;
             font-weight: bold;
             background: #00ffcc;
-            color: #00;
+            color: #000;
             border: none;
-            border-radius: 10px;
+            border-radius: 25px;
             cursor: pointer;
-            box-shadow: 0 5px #00a887;
+            box-shadow: 0 4px #00a887;
+        }
+
+        .start-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px #00a887;
         }
 
         #level-up-msg {
@@ -85,7 +101,7 @@
             top: 40%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 40px;
+            font-size: 32px;
             font-weight: bold;
             color: #fff;
             text-shadow: 0 0 10px #ff4757;
@@ -94,52 +110,50 @@
         }
 
         .controls {
-            display: grid;
-            grid-template-columns: repeat(3, 60px);
-            grid-template-rows: repeat(2, 60px);
-            gap: 12px;
-            margin-top: 20px;
+            position: fixed;
+            bottom: 15px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 0;
         }
 
         .btn {
-            width: 60px;
-            height: 60px;
-            background: #444;
+            width: 55px;
+            height: 55px;
+            background: rgba(68, 68, 68, 0.8);
             border-radius: 50%;
+            border: 1px solid #555;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 22px;
+            font-size: 20px;
             font-weight: bold;
-            color: white;
+            color: #fff;
             user-select: none;
-            box-shadow: 0 4px #222;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .btn:active {
-            transform: translateY(4px);
-            box-shadow: 0 0 #222;
-            background: #666;
+            background: #00ffcc;
+            color: #000;
+            transform: scale(0.9);
         }
 
         .btn-rotate {
-            background: #ff4757;
-            grid-column: 2;
-        }
-
-        .btn-down {
-            grid-column: 2;
+            background: rgba(255, 71, 87, 0.8);
+            border-color: #ff4757;
         }
 
         .btn-space {
-            width: 140px;
-            height: 45px;
-            border-radius: 25px;
-            grid-column: 1 / span 3;
-            margin: 10px auto 0 auto;
+            width: 85px;
+            height: 55px;
+            border-radius: 20px;
+            font-size: 13px;
             background: #2f3542;
-            font-size: 16px;
-            box-shadow: 0 4px #111;
         }
     </style>
 </head>
@@ -150,36 +164,36 @@
             id="lines">0</span></div>
 
     <div class="game-container">
-        <canvas id="tetris" width="240" height="400"></canvas>
-        <div id="overlay"><button class="start-btn" onclick="startGame()">START GAME</button></div>
+        <canvas id="tetris" width="200" height="400"></canvas>
+
+        <div id="overlay">
+            <div id="status-display" class="status-text">READY?</div>
+            <div id="final-score-display" class="score-text" style="display:none;">Score: <span
+                    id="final-score">0</span></div>
+            <button class="start-btn" onclick="startGame()">START GAME</button>
+        </div>
+
         <div id="level-up-msg">LEVEL UP!</div>
     </div>
 
     <div class="controls">
         <div class="btn" onclick="playerMove(-1)">◀</div>
+        <div class="btn" onclick="playerDrop()">▼</div>
         <div class="btn btn-rotate" onclick="playerRotate(1)">↻</div>
         <div class="btn" onclick="playerMove(1)">▶</div>
-        <div></div>
-        <div class="btn" onclick="playerDrop()">▼</div>
-        <div></div>
-        <div class="btn btn-space" onclick="playerHardDrop()">HARD DROP</div>
+        <div class="btn btn-space" onclick="playerHardDrop()">HARD<br>DROP</div>
     </div>
 
     <script>
-        // --- [내용물] 마법의 소리 생성기 ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
         function playNote(freq, type, duration) {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.type = type; // square(고전게임느낌), triangle, sine
-            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + duration);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + duration);
         }
 
         const canvas = document.getElementById('tetris');
@@ -191,16 +205,16 @@
         let gameRunning = false;
 
         function startGame() {
-            if (audioCtx.state === 'suspended') audioCtx.resume(); // 사운드 활성화
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             document.getElementById('overlay').style.display = 'none';
-            gameRunning = true;
-            playerReset();
+            arena.forEach(row => row.fill(0));
+            player.score = 0; player.level = 1; player.lines = 0; dropInterval = 1000;
             updateScore();
-            if (!animationStarted) { update(); animationStarted = true; }
-            playNote(440, 'sine', 0.2); // 시작 띠링~
+            playerReset();
+            gameRunning = true;
+            playNote(440, 'sine', 0.2);
         }
 
-        // 테트리스 로직들
         function createPiece(type) {
             if (type === 'I') return [[0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0]];
             if (type === 'L') return [[0, 2, 0], [0, 2, 0], [0, 2, 2]];
@@ -217,10 +231,32 @@
             return matrix;
         }
 
+        // 가이드라인(고스트) 계산 및 그리기
+        function drawGhost() {
+            if (!player.matrix) return;
+            const ghostPos = { x: player.pos.x, y: player.pos.y };
+            while (!collide(arena, { pos: ghostPos, matrix: player.matrix })) {
+                ghostPos.y++;
+            }
+            ghostPos.y--; // 충돌 직전 위치
+
+            // 흐릿한 흰색 테두리로 그리기
+            context.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            context.lineWidth = 0.1;
+            player.matrix.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value !== 0) {
+                        context.strokeRect(x + ghostPos.x, y + ghostPos.y, 1, 1);
+                    }
+                });
+            });
+        }
+
         function draw() {
             context.fillStyle = '#000';
             context.fillRect(0, 0, canvas.width, canvas.height);
             drawMatrix(arena, { x: 0, y: 0 });
+            if (gameRunning) drawGhost(); // 가이드라인 그리기
             if (player.matrix) drawMatrix(player.matrix, player.pos);
             sweepAnim.forEach(y => { context.fillStyle = '#fff'; context.fillRect(0, y, arena[0].length, 1); });
         }
@@ -252,14 +288,12 @@
                     if (value !== 0) arena[y + player.pos.y][x + player.pos.x] = value;
                 });
             });
-            playNote(150, 'triangle', 0.1); // 툭 떨어지는 소리
+            playNote(150, 'triangle', 0.1);
         }
 
         function rotate(matrix, dir) {
             for (let y = 0; y < matrix.length; ++y) {
-                for (let x = 0; x < y; ++x) {
-                    [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
-                }
+                for (let x = 0; x < y; ++x) { [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]]; }
             }
             if (dir > 0) matrix.forEach(row => row.reverse());
             else matrix.reverse();
@@ -284,21 +318,31 @@
             merge(arena, player);
             playerReset();
             arenaSweep();
-            playNote(100, 'square', 0.2); // 쾅!
+            playNote(100, 'square', 0.2);
         }
 
         function playerMove(dir) {
             if (!gameRunning) return;
             player.pos.x += dir;
             if (collide(arena, player)) player.pos.x -= dir;
-            else playNote(300, 'sine', 0.05); // 옆으로 틱틱
+            else playNote(300, 'sine', 0.05);
         }
 
         function playerRotate(dir) {
             if (!gameRunning) return;
+            const pos = player.pos.x;
+            let offset = 1;
             rotate(player.matrix, dir);
-            if (collide(arena, player)) rotate(player.matrix, -dir);
-            else playNote(600, 'sine', 0.1); // 뾱!
+            while (collide(arena, player)) {
+                player.pos.x += offset;
+                offset = -(offset + (offset > 0 ? 1 : -1));
+                if (offset > player.matrix[0].length) {
+                    rotate(player.matrix, -dir);
+                    player.pos.x = pos;
+                    return;
+                }
+            }
+            playNote(600, 'sine', 0.1);
         }
 
         function arenaSweep() {
@@ -309,7 +353,7 @@
             }
             if (rowsToClear.length > 0) {
                 sweepAnim = rowsToClear;
-                playNote(800, 'square', 0.3); // 팡! 소리
+                playNote(800, 'square', 0.3);
                 setTimeout(() => {
                     rowsToClear.forEach(y => {
                         const row = arena.splice(y, 1)[0].fill(0);
@@ -323,7 +367,7 @@
                         player.lines -= 10;
                         dropInterval *= 0.95;
                         document.getElementById('level-up-msg').style.display = 'block';
-                        playNote(1200, 'sine', 0.5); // 레벨업 빰빰!
+                        playNote(1200, 'sine', 0.5);
                         setTimeout(() => { document.getElementById('level-up-msg').style.display = 'none'; }, 1000);
                     }
                     updateScore();
@@ -336,13 +380,16 @@
             player.matrix = createPiece(pieces[pieces.length * Math.random() | 0]);
             player.pos.y = 0;
             player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
+
             if (collide(arena, player)) {
                 gameRunning = false;
+                document.getElementById('status-display').innerText = "GAME OVER";
+                document.getElementById('status-display').style.color = "#ff4757";
+                document.getElementById('final-score').innerText = player.score;
+                document.getElementById('final-score-display').style.display = "block";
+                document.querySelector('.start-btn').innerText = "RESTART";
                 document.getElementById('overlay').style.display = 'flex';
-                playNote(50, 'square', 0.5); // 패배 소리
-                arena.forEach(row => row.fill(0));
-                player.score = 0; player.level = 1; player.lines = 0; dropInterval = 1000;
-                updateScore();
+                playNote(50, 'square', 0.5);
             }
         }
 
@@ -352,9 +399,9 @@
             document.getElementById('lines').innerText = player.lines;
         }
 
-        const arena = createMatrix(12, 20);
+        const arena = createMatrix(10, 20);
         const player = { pos: { x: 0, y: 0 }, matrix: null, score: 0, level: 1, lines: 0 };
-        let dropCounter = 0, dropInterval = 1000, lastTime = 0, animationStarted = false;
+        let dropCounter = 0, dropInterval = 1000, lastTime = 0;
 
         function update(time = 0) {
             const deltaTime = time - lastTime;
@@ -366,7 +413,7 @@
             draw();
             requestAnimationFrame(update);
         }
-        draw(); 
+        update(); // 루프 시작
     </script>
 </body>
 
